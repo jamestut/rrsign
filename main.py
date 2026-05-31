@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, PlainTextResponse
 import uvicorn
 
 from config import load_config, verify_cert_chain, check_cert_valid, AppConfig
@@ -53,6 +53,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="RRSign", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
 def get_user(request: Request) -> dict:
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
@@ -64,6 +72,12 @@ def get_user(request: Request) -> dict:
 
 
 # ── Routes ───────────────────────────────────────────────────────────
+
+ROBOTS_TXT = "User-agent: *\nDisallow: /\n"
+
+@app.get("/robots.txt")
+async def robots():
+    return PlainTextResponse(ROBOTS_TXT)
 
 @app.get("/")
 async def root():

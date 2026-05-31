@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Digital Agreement Signer</title>
+<style>
+:root {
+  --bg:#fff; --bg2:#f5f5f5; --text:#1a1a1a; --text2:#666;
+  --border:#e0e0e0; --accent:#2563eb; --accent-hover:#1d4ed8;
+  --success:#16a34a; --danger:#dc2626; --warning:#f59e0b;
+  --bar-bg:#fafafa; --top-bg:#fff; --overlay:rgba(0,0,0,0.4);
+}
+@media(prefers-color-scheme:dark){
+  :root {
+    --bg:#0f0f1a; --bg2:#1a1a2e; --text:#e0e0e0; --text2:#999;
+    --border:#2a2a3e; --accent:#3b82f6; --accent-hover:#60a5fa;
+    --success:#22c55e; --danger:#ef4444; --warning:#f59e0b;
+    --bar-bg:#1a1a2e; --top-bg:#0f0f1a; --overlay:rgba(0,0,0,0.7);
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;
+  background:var(--bg);color:var(--text);user-select:text;-webkit-user-select:text;
+  line-height:1.6;font-size:16px;-webkit-text-size-adjust:100%
+}
+#app{display:flex;flex-direction:column;height:100%}
+.hidden{display:none!important}
+/* ── Loading / Unavailable / Invalid ── */
+.flex-center{display:flex;align-items:center;justify-content:center;flex:1;padding:2rem;text-align:center}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin-right:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.msg-box{max-width:480px}
+.msg-box h1{margin-bottom:.5rem}
+/* ── Top Bar ── */
+#top-bar{
+  flex-shrink:0;z-index:100;
+  background:var(--top-bg);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;gap:12px;min-height:48px
+}
+#user-name{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-weight:600;font-size:15px;flex:1;min-width:0
+}
+#user-name::before{content:attr(data-nickname)}
+@media(min-width:768px){#user-name::before{content:attr(data-fullname)}}
+#page-counter{font-size:13px;color:var(--text2);white-space:nowrap;flex-shrink:0}
+/* ── Page Content ── */
+#page-content{
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:20px 16px;max-width:800px;margin:0 auto;width:100%
+}
+#page-content h1,#page-content h2,#page-content h3{margin:1.5em 0 .5em;line-height:1.3}
+#page-content h1{font-size:1.5rem}
+#page-content h2{font-size:1.25rem}
+#page-content p{margin-bottom:1em}
+#page-content ul,#page-content ol{padding-left:1.5em;margin-bottom:1em}
+#page-content li{margin-bottom:.25em}
+#page-content blockquote{border-left:3px solid var(--accent);padding:.5em 1em;margin:1em 0;background:var(--bg2);color:var(--text2)}
+#page-content code{background:var(--bg2);padding:2px 6px;border-radius:3px;font-size:.9em}
+#page-content pre{background:var(--bg2);padding:16px;border-radius:6px;overflow-x:auto;margin:1em 0}
+#page-content pre code{padding:0;background:none}
+#page-content a{color:var(--accent)}
+#page-content img{max-width:100%;height:auto}
+/* ── Toolbar ── */
+#toolbar{
+  flex-shrink:0;z-index:100;
+  background:var(--bar-bg);border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 16px;min-height:56px;gap:8px
+}
+.toolbar-left,.toolbar-right{display:flex;align-items:center;gap:6px}
+.toolbar-btn{
+  display:flex;align-items:center;justify-content:center;
+  min-width:44px;min-height:44px;border:1px solid var(--border);
+  border-radius:8px;background:var(--bg);color:var(--text);
+  font-size:20px;cursor:pointer;transition:background .15s,opacity .15s;
+  -webkit-tap-highlight-color:transparent;user-select:none
+}
+.toolbar-btn:active:not(:disabled){background:var(--bg2)}
+.toolbar-btn:disabled{opacity:.3;cursor:default}
+.toolbar-btn-agree{color:var(--success);border-color:var(--success)}
+.toolbar-btn-agree:not(:disabled):hover{background:var(--success);color:#fff}
+.toolbar-btn-reject{color:var(--danger);border-color:var(--danger)}
+.toolbar-btn-reject:not(:disabled):hover{background:var(--danger);color:#fff}
+.toolbar-msg{
+  text-align:center;width:100%;font-size:14px;font-weight:600;padding:4px 0
+}
+.toolbar-msg.msg-agreed{color:var(--success)}
+.toolbar-msg.msg-rejected{color:var(--danger)}
+/* ── Signer / Status Grid ── */
+.signer-grid{display:grid;gap:12px;margin:16px 0}
+@media(min-width:600px){.signer-grid{grid-template-columns:1fr 1fr}}
+.signer-card{
+  border:2px solid var(--border);border-radius:10px;padding:14px 16px;
+  background:var(--bg2);transition:border-color .2s
+}
+.signer-card.current{border-color:var(--accent);background:var(--bg)}
+.signer-card.agreed{border-color:var(--success)}
+.signer-card.rejected{border-color:var(--danger)}
+.signer-card .name{font-weight:600;font-size:15px;margin-bottom:4px}
+.signer-card .you{color:var(--text2);font-weight:400;font-size:13px}
+.signer-card .pages{font-size:13px;color:var(--text2);margin-top:4px;}
+.badge{
+  display:inline-block;padding:2px 10px;border-radius:12px;
+  font-size:12px;font-weight:600
+}
+.badge-agreed{background:var(--success);color:#fff}
+.badge-rejected{background:var(--danger);color:#fff}
+.badge-pending{background:var(--border);color:var(--text2)}
+/* ── Overview final actions ── */
+.final-actions{margin-top:24px;padding:20px;border:2px solid var(--accent);border-radius:12px;background:var(--bg2);text-align:center}
+.final-actions p{margin-bottom:12px;font-weight:600;font-size:15px}
+.final-actions .toolbar-btn{display:inline-flex;font-size:16px;padding:10px 24px;min-width:auto}
+/* ── Download link ── */
+.download-btn{
+  display:inline-block;margin-top:16px;
+  padding:10px 24px;border-radius:8px;
+  background:var(--accent);color:#fff;border:none;
+  font-size:15px;font-weight:600;cursor:pointer;text-decoration:none
+}
+#page-content .download-btn{color:#fff}
+#page-content .download-btn:hover{color:#fff}
+.download-btn:hover{background:var(--accent-hover)}
+.completion-banner{padding:14px 16px;border-radius:8px;margin:16px 0;font-weight:600;font-size:15px;text-align:center}
+.completion-banner.agreed{background:var(--success);color:#fff}
+.completion-banner.rejected{background:var(--danger);color:#fff}
+/* ── Modal ── */
+#modal-overlay{
+  position:fixed;inset:0;z-index:200;
+  background:var(--overlay);display:flex;
+  align-items:center;justify-content:center;padding:16px
+}
+#modal-box{
+  background:var(--bg);border-radius:12px;width:100%;max-width:400px;
+  padding:24px;box-shadow:0 8px 32px rgba(0,0,0,.2);
+  position:relative;max-height:90vh;overflow-y:auto
+}
+#modal-box h3{margin-bottom:8px;font-size:16px}
+#modal-box p{margin-bottom:16px;font-size:14px;color:var(--text2);line-height:1.5}
+#modal-input{
+  width:100%;padding:10px 12px;border:1px solid var(--border);
+  border-radius:6px;font-size:15px;background:var(--bg);color:var(--text);
+  margin-bottom:16px;outline:none
+}
+#modal-input:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end}
+.modal-actions button{
+  padding:8px 20px;border-radius:6px;font-size:14px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text)
+}
+.modal-actions .btn-confirm{background:var(--accent);color:#fff;border-color:var(--accent)}
+.modal-actions .btn-confirm:hover{background:var(--accent-hover)}
+.modal-actions .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+.modal-actions .btn-danger:hover{opacity:.9}
+@media(min-width:768px){
+  #page-content{padding:32px 24px 24px;font-size:17px}
+  #top-bar{padding:12px 24px}
+  #toolbar{padding:10px 24px}
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- Loading -->
+  <div id="view-loading" class="flex-center"><div class="spinner"></div><span>Loading…</span></div>
+
+  <!-- Unavailable -->
+  <div id="view-unavailable" class="flex-center hidden">
+    <div class="msg-box"><h1>System Unavailable</h1><p>The signing certificate is no longer valid. Please contact your administrator.</p></div>
+  </div>
+
+  <!-- Invalid -->
+  <div id="view-invalid" class="flex-center hidden">
+    <div class="msg-box"><h1>Access Denied</h1><p>Your authentication token is invalid or has expired.</p></div>
+  </div>
+
+  <!-- Main view (signers + viewers) -->
+  <div id="view-main" class="hidden" style="display:flex;flex-direction:column;height:100%">
+    <header id="top-bar">
+      <span id="user-name"></span>
+      <span id="page-counter"></span>
+    </header>
+    <main id="page-content"></main>
+    <footer id="toolbar">
+      <div class="toolbar-left">
+        <button class="toolbar-btn" id="btn-back" disabled aria-label="Back">←</button>
+        <button class="toolbar-btn" id="btn-next" disabled aria-label="Next">→</button>
+      </div>
+      <div class="toolbar-msg hidden" id="toolbar-msg"></div>
+      <div class="toolbar-right">
+        <button class="toolbar-btn toolbar-btn-reject" id="btn-reject" disabled aria-label="Reject">✗</button>
+        <button class="toolbar-btn toolbar-btn-agree" id="btn-agree" disabled aria-label="Agree">✓</button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- Action Modal -->
+<div id="modal-overlay" class="hidden">
+  <div id="modal-box">
+    <h3 id="modal-title"></h3>
+    <p id="modal-desc"></p>
+    <input type="text" id="modal-input" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="modal-actions">
+      <button id="modal-cancel">Cancel</button>
+      <button id="modal-confirm" class="btn-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+const state = {
+  token: null, user: null, pages: [], page: 0,
+  myState: {}, status: null, authed: false,
+  isSigner: false, completed: false,
+};
+
+// ── Init ────────────────────────────────────────────────────────────
+window.addEventListener('load', handleHash);
+document.getElementById('btn-back').addEventListener('click', goBack);
+document.getElementById('btn-next').addEventListener('click', goNext);
+document.getElementById('btn-agree').addEventListener('click', openAgree);
+document.getElementById('btn-reject').addEventListener('click', openReject);
+window.addEventListener('hashchange', handleHash);
+
+async function handleHash() {
+  const p = new URLSearchParams(window.location.hash.slice(1));
+  const token = p.get('token');
+  const page = parseInt(p.get('page')) || 0;
+  if (!token) { showView('invalid'); return; }
+  if (token !== state.token || !state.authed) {
+    state.token = token; state.page = page; state.authed = false;
+    await authenticate();
+  } else if (state.page !== page) {
+    state.page = page;
+    renderPage();
+  }
+}
+
+function setHash(token, page) {
+  const hash = '#token=' + encodeURIComponent(token) + '&page=' + page;
+  if (window.location.hash !== hash) window.location.hash = hash;
+}
+
+// ── Views ───────────────────────────────────────────────────────────
+function showView(name) {
+  ['loading','unavailable','invalid','main'].forEach(function(v) {
+    var el = document.getElementById('view-' + v);
+    if (v === name) {
+      el.classList.remove('hidden');
+      if (v === 'main') el.style.display = 'flex';
+    } else {
+      el.classList.add('hidden');
+      if (v === 'main') el.style.display = '';
+    }
+  });
+}
+
+// ── Geolocation ─────────────────────────────────────────────────────
+function captureGeolocation() {
+  return new Promise(function(resolve) {
+    if (!navigator.geolocation) { resolve(null); return; }
+    var timeout = setTimeout(function() { resolve(null); }, 10000);
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        clearTimeout(timeout);
+        resolve({latitude: pos.coords.latitude, longitude: pos.coords.longitude});
+      },
+      function() { clearTimeout(timeout); resolve(null); },
+      {timeout: 8000, enableHighAccuracy: false}
+    );
+  });
+}
+
+// ── Auth ────────────────────────────────────────────────────────────
+async function authenticate() {
+  showView('loading');
+  try {
+    var r = await fetch('/api/auth', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token:state.token})
+    });
+    var d = await r.json();
+    if (d.role === 'invalid') { showView('invalid'); return; }
+    state.user = d; state.authed = true;
+    state.isSigner = d.role === 'signer';
+    await initMain();
+  } catch(e) {
+    showView('invalid');
+  }
+}
+
+// ── Unified init ────────────────────────────────────────────────────
+async function initMain() {
+  try {
+    var r = await fetch('/api/pages',{headers:{'Authorization':'Bearer '+state.token}});
+    var d = await r.json();
+    state.pages = d.pages || [];
+  } catch(e) { state.pages = []; }
+
+  if (state.isSigner) {
+    await refreshMyState();
+    state.completed = state.myState.rejected || state.myState.final_agreed;
+    if (!state.completed) {
+      state.geolocation = await captureGeolocation();
+    }
+  } else {
+    state.myState = {};
+    state.completed = true;
+  }
+
+  await refreshStatus();
+  showView('main');
+  renderPage();
+}
+
+async function refreshMyState() {
+  try {
+    var r = await fetch('/api/me/state', {
+      method:'POST', headers:{'Authorization':'Bearer '+state.token,'Content-Type':'application/json'},
+      body:'{}'
+    });
+    state.myState = await r.json();
+  } catch(e) { state.myState = {}; }
+}
+
+async function refreshStatus() {
+  try {
+    var r = await fetch('/api/status',{headers:{'Authorization':'Bearer '+state.token}});
+    state.status = await r.json();
+  } catch(e) { state.status = null; }
+}
+
+// ── Render ──────────────────────────────────────────────────────────
+function renderPage() {
+  var total = state.pages.length;
+  var isOverview = state.page === 0;
+  var isFinalSigning = state.page === total + 1;
+  var nameEl = document.getElementById('user-name');
+
+  if (state.isSigner) {
+    nameEl.setAttribute('data-nickname', state.user.nickname || '');
+    nameEl.setAttribute('data-fullname', state.user.full_name || '');
+  } else {
+    nameEl.setAttribute('data-nickname', 'View Only');
+    nameEl.setAttribute('data-fullname', 'View Only');
+  }
+
+  document.getElementById('page-counter').textContent =
+    isOverview ? 'Overview' : isFinalSigning ? 'Finalise' : 'Page ' + state.page + ' of ' + total;
+
+  var content = document.getElementById('page-content');
+  content.scrollTop = 0;
+  if (isOverview) {
+    renderOverview(content);
+  } else if (isFinalSigning) {
+    renderFinalSigning(content);
+  } else {
+    content.innerHTML = marked.parse(state.pages[state.page - 1] || '*Page content missing*');
+  }
+
+  updateToolbar(isOverview, isFinalSigning);
+  setHash(state.token, state.page);
+}
+
+function renderOverview(container) {
+  var html = '<h2>Agreement Overview</h2>';
+  html += '<div class="signer-grid">';
+  if (state.status && state.status.signers) {
+    for (var id in state.status.signers) {
+      var info = state.status.signers[id];
+      var isMe = state.isSigner && id === state.user.id;
+      var cls = info.final_agreed ? 'agreed' : info.rejected ? 'rejected' : '';
+      html += '<div class="signer-card'+(cls?' '+cls:'')+(isMe?' current':'')+'">';
+      html += '<div class="name">'+escHtml(info.full_name)+(isMe?' <span class="you">(You)</span>':'')+'</div>';
+      if (info.final_agreed) html += '<span class="badge badge-agreed">✓ Agreed</span>';
+      else if (info.rejected) html += '<span class="badge badge-rejected">✗ Rejected</span>';
+      else html += '<span class="badge badge-pending">⋯ Pending</span>';
+      if (info.final_agreed) {
+        if (info.geolocation) {
+          var gl = info.geolocation;
+          html += '<div class="pages"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:3px"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg><a href="https://www.google.com/maps?q='+gl.lat+','+gl.lng+'" target="_blank" rel="noopener" style="color:var(--text2);text-decoration:underline;text-decoration-style:dotted">'+gl.lat.toFixed(3)+', '+gl.lng.toFixed(3)+'</a></div>';
+        }
+      } else if (!info.rejected) {
+        html += '<div class="pages">Pages agreed: '+(info.agreed_pages||[]).length+'/'+state.pages.length+'</div>';
+      }
+      html += '</div>';
+    }
+  }
+  html += '</div>';
+
+  // Completion banner for signers
+  if (state.isSigner && state.completed) {
+    if (state.myState.final_agreed) {
+      html += '<div class="completion-banner agreed">✓ You have agreed to this agreement</div>';
+    } else if (state.myState.rejected) {
+      html += '<div class="completion-banner rejected">✗ You have rejected this agreement</div>';
+    }
+  }
+
+  // Download link
+  if (state.status && state.status.proof_generated) {
+    html += '<p style="margin-top:20px;text-align:center"><button onclick="downloadProof()" class="download-btn">Download Proof of Agreement</button></p>';
+  } else {
+    html += '<p style="margin-top:20px;text-align:center;color:var(--text2);font-size:14px">Proof will be generated once all parties have agreed.</p>';
+  }
+
+  container.innerHTML = html;
+}
+
+function renderFinalSigning(container) {
+  var html = '<h2>Finalise</h2>';
+
+  if (state.completed) {
+    if (state.myState.final_agreed) {
+      html += '<p style="margin-top:24px;font-size:16px;font-weight:600;color:var(--success)">✓ You have agreed to this agreement</p>';
+      if (state.myState.geolocation) {
+        var gl = state.myState.geolocation;
+        html += '<p style="margin-top:8px;font-size:13px;color:var(--text2)">Location recorded: <a href="https://www.google.com/maps?q='+gl.lat+','+gl.lng+'" target="_blank" rel="noopener">'+gl.lat.toFixed(3)+', '+gl.lng.toFixed(3)+'</a></p>';
+      }
+    } else if (state.myState.rejected)
+      html += '<p style="margin-top:24px;font-size:16px;font-weight:600;color:var(--danger)">✗ You have rejected this agreement</p>';
+    if (state.status && state.status.proof_generated) {
+      html += '<p style="margin-top:20px;text-align:center"><button onclick="downloadProof()" class="download-btn">Download Proof of Agreement</button></p>';
+    }
+    container.innerHTML = html;
+    return;
+  }
+
+  var agreedCount = (state.myState.agreed_pages || []).length;
+  var total = state.pages.length;
+  var allAgreed = agreedCount === total && total > 0;
+
+  html += '<p>Pages agreed: ' + agreedCount + '/' + total + '</p>';
+  if (state.geolocation) {
+    var gl = state.geolocation;
+    html += '<p style="margin-top:8px;font-size:13px;color:var(--text2)">Your location: <a href="https://www.google.com/maps?q='+gl.latitude+','+gl.longitude+'" target="_blank" rel="noopener">'+gl.latitude.toFixed(3)+', '+gl.longitude.toFixed(3)+'</a></p>';
+  }
+  html += '<p>Review and make your final decision:</p>';
+  html += '<div style="text-align:center;margin-top:24px">';
+  html += '<button onclick="finalAgree()" class="toolbar-btn toolbar-btn-agree" style="display:inline-flex;padding:12px 32px;font-size:16px"' + (allAgreed ? '' : ' disabled') + '>✓ Agree</button>';
+  html += '<button onclick="openReject()" class="toolbar-btn toolbar-btn-reject" style="display:inline-flex;padding:12px 32px;font-size:16px;margin-left:12px">✗ Reject</button>';
+  html += '</div>';
+  if (!allAgreed)
+    html += '<p style="text-align:center;color:var(--text2);margin-top:12px;font-size:14px">Agree to all pages first to enable final agreement.</p>';
+
+  if (state.status && state.status.proof_generated) {
+    html += '<p style="margin-top:20px;text-align:center"><button onclick="downloadProof()" class="download-btn">Download Proof of Agreement</button></p>';
+  }
+
+  container.innerHTML = html;
+}
+
+function updateToolbar(isOverview, isFinalSigning) {
+  var total = state.pages.length;
+  var ms = state.myState || {};
+  var back = document.getElementById('btn-back');
+  var next = document.getElementById('btn-next');
+  var agree = document.getElementById('btn-agree');
+  var reject = document.getElementById('btn-reject');
+  var msg = document.getElementById('toolbar-msg');
+  var left = document.querySelector('#toolbar .toolbar-left');
+  var right = document.querySelector('#toolbar .toolbar-right');
+
+  back.disabled = state.page === 0;
+  var maxPage = state.isSigner && total > 0 ? total + 1 : total;
+  next.disabled = state.page >= maxPage;
+
+  // Always keep left nav visible
+  left.classList.remove('hidden');
+  // Completed: message replaces right buttons
+  if (state.isSigner && state.completed) {
+    right.classList.add('hidden');
+    msg.className = 'toolbar-msg ' + (ms.rejected ? 'msg-rejected' : 'msg-agreed');
+    msg.textContent = ms.rejected ? '✗ You rejected this agreement' : '✓ You agreed to this agreement';
+    return;
+  }
+
+  // Final signing page or viewer: nav only, no actions
+  if (isFinalSigning || isOverview || !state.isSigner) {
+    right.classList.add('hidden');
+    msg.classList.add('hidden');
+    return;
+  }
+
+  // Active signer on a READme page: show all
+  right.classList.remove('hidden');
+  msg.classList.add('hidden');
+  var pageIdx = state.page - 1;
+  var already = (ms.agreed_pages||[]).indexOf(pageIdx) !== -1;
+  agree.disabled = already;
+  reject.disabled = false;
+}
+
+// ── Toolbar Actions ─────────────────────────────────────────────────
+function goBack() {
+  if (state.page > 0) { state.page--; renderPage(); }
+}
+function goNext() {
+  var maxPage = state.pages.length;
+  if (state.isSigner && state.pages.length > 0) maxPage = state.pages.length + 1;
+  if (state.page < maxPage) { state.page++; renderPage(); }
+}
+
+function openAgree() {
+  if (!state.isSigner || state.completed) return;
+  var pageIdx = state.page - 1;
+  if ((state.myState.agreed_pages||[]).indexOf(pageIdx) !== -1) return;
+
+  openModal('Agree to Page', 'Type your <strong>nickname</strong> to agree to this page.', 'nickname', async function(val) {
+    var r = await fetch('/api/page/'+pageIdx+'/agree', {
+      method:'POST', headers:{'Authorization':'Bearer '+state.token,'Content-Type':'application/json'},
+      body:JSON.stringify({name:val})
+    });
+    var result = await r.json();
+    if (result.ok) {
+      await refreshMyState();
+      state.completed = state.myState.rejected || state.myState.final_agreed;
+      await refreshStatus();
+      renderPage();
+    }
+    return result;
+  });
+}
+
+function openReject() {
+  if (!state.isSigner || state.completed) return;
+
+  openModal('Reject Agreement', 'Type your <strong>full name (case sensitive)</strong> to reject. This <strong>cannot be undone</strong>.', 'full_name', async function(val) {
+    var r = await fetch('/api/final/reject', {
+      method:'POST', headers:{'Authorization':'Bearer '+state.token,'Content-Type':'application/json'},
+      body:JSON.stringify({name:val})
+    });
+    var result = await r.json();
+    if (result.ok) {
+      await refreshMyState();
+      state.completed = state.myState.rejected || state.myState.final_agreed;
+      await refreshStatus();
+      renderPage();
+    }
+    return result;
+  });
+}
+
+// ── Overview inline actions ─────────────────────────────────────────
+function finalAgree() {
+  if (!state.isSigner || state.completed) return;
+  openModal('Agree to Agreement', 'Type your <strong>full name (case sensitive)</strong> to finalize your agreement.', 'full_name', async function(val) {
+    var body = {name: val};
+    if (state.geolocation) {
+      body.latitude = state.geolocation.latitude;
+      body.longitude = state.geolocation.longitude;
+    }
+    var r = await fetch('/api/final/agree', {
+      method:'POST', headers:{'Authorization':'Bearer '+state.token,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    var result = await r.json();
+    if (result.ok) {
+      await refreshMyState();
+      state.completed = state.myState.rejected || state.myState.final_agreed;
+      await refreshStatus();
+      renderPage();
+    }
+    return result;
+  });
+}
+
+// ── Modal ───────────────────────────────────────────────────────────
+var modalCallback = null;
+function openModal(title, desc, type, cb) {
+  document.getElementById('modal-title').innerHTML = title;
+  document.getElementById('modal-desc').innerHTML = desc;
+  var input = document.getElementById('modal-input');
+  input.value = ''; input.placeholder = type === 'full_name' ? 'Full name' : 'Nickname';
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  modalCallback = cb;
+  setTimeout(function(){ input.focus(); }, 100);
+}
+async function modalConfirm() {
+  var val = document.getElementById('modal-input').value;
+  if (!val.trim()) return;
+  if (!modalCallback) return;
+  var btn = document.getElementById('modal-confirm');
+  var orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    var result = await modalCallback(val.trim());
+    if (result.ok) {
+      closeModal();
+    } else {
+      alert(result.error || 'Action failed');
+    }
+  } catch(e) {
+    alert('Network error');
+  }
+  btn.disabled = false; btn.textContent = orig;
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+  modalCallback = null;
+}
+document.getElementById('modal-confirm').addEventListener('click', modalConfirm);
+document.getElementById('modal-cancel').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === e.currentTarget) closeModal();
+});
+document.getElementById('modal-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') modalConfirm();
+  if (e.key === 'Escape') closeModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+
+// ── Helpers ─────────────────────────────────────────────────────────
+function escHtml(s) {
+  var d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Fetch proof zip with auth header, save via blob URL
+// Backend: GET /api/proof/download -> proof_of_agreement.zip
+async function downloadProof() {
+  try {
+    var r = await fetch('/api/proof/download', {headers:{'Authorization':'Bearer '+state.token}});
+    if (!r.ok) { alert('Download failed'); return; }
+    var blob = await r.blob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'proof_of_agreement.zip';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 10000);
+  } catch(e) { alert('Download failed'); }
+}
+</script>
+</body>
+</html>

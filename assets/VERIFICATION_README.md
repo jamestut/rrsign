@@ -14,7 +14,7 @@ This archive contains the cryptographic proof of agreement.
 
 ```bash
 openssl cms -verify -in signature.der -inform der -content agreement.json \
-    -CAfile <root-ca-bundle.pem> -binary -out /dev/null
+    -binary -out /dev/null -CAfile <root-ca-bundle.pem>
 ```
 
 ### 2. Inspect CMS Signature Details

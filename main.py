@@ -104,18 +104,13 @@ async def api_auth(request: Request):
     if info["role"] == "signer":
         client = request.client
         host = client.host if client else "unknown"
-        ipv4 = host if ":" not in host else None
-        ipv6 = host if ":" in host else None
         ua = request.headers.get("user-agent", "")
 
         f = lock_state(_workdir)
         try:
             state = json.load(f)
             s = ensure_signer(state, info["id"])
-            if ipv4:
-                s["ip"] = ipv4
-            if ipv6:
-                s["ipv6"] = ipv6
+            s["ip"] = host
             s["user_agent"] = ua
             f.seek(0)
             f.truncate()

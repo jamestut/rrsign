@@ -8,7 +8,6 @@ DEFAULT_SIGNER = {
     "final_agreed": False,
     "final_agreed_at": None,
     "ip": None,
-    "ipv6": None,
     "user_agent": None,
     "geolocation": None,
 }

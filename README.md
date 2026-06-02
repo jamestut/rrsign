@@ -119,7 +119,6 @@ The working directory stores `state.json` with the signing progress:
       "final_agreed": false,
       "final_agreed_at": null,
       "ip": "192.0.2.1",
-      "ipv6": null,
       "user_agent": "Mozilla/5.0...",
       "geolocation": null
     }

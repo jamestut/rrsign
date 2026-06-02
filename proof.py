@@ -21,7 +21,6 @@ def generate_proof(
                 "full_name": signer.full_name,
                 "agreed_at": s.get("final_agreed_at"),
                 "ip": s.get("ip"),
-                "ipv6": s.get("ipv6"),
                 "user_agent": s.get("user_agent"),
                 "geolocation": s.get("geolocation"),
             })

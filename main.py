@@ -328,10 +328,12 @@ def main():
     parser.add_argument("--workdir", type=Path, required=True, help="Working directory")
     parser.add_argument("--port", type=int, default=8000, help="HTTP port (default: 8000)")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Bind address (default: 0.0.0.0)")
+    parser.add_argument("--forwarded-allow-ips", type=str, default="127.0.0.1",
+                        help="Comma-separated IPs trusted for X-Forwarded-For (default: 127.0.0.1)")
     args = parser.parse_args()
 
     init_app(args.config, args.workdir)
-    uvicorn.run(app, host=args.host, port=args.port)
+    uvicorn.run(app, host=args.host, port=args.port, forwarded_allow_ips=args.forwarded_allow_ips)
 
 
 if __name__ == "__main__":

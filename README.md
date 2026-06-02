@@ -70,10 +70,11 @@ All relative paths in `readme_pages` and `pki.*` are resolved relative to the co
 ## CLI Arguments
 
 ```
---config PATH   Path to configuration JSON (required)
---workdir PATH  Working directory for state.json and proof zips (required)
---port INT      HTTP port (default: 8000)
---host TEXT     Bind address (default: 0.0.0.0)
+--config PATH            Path to configuration JSON (required)
+--workdir PATH           Working directory for state.json and proof zips (required)
+--port INT               HTTP port (default: 8000)
+--host TEXT              Bind address (default: 0.0.0.0)
+--forwarded-allow-ips    Comma-separated proxy IPs trusted for X-Forwarded-For (default: 127.0.0.1; use "*" to trust all)
 ```
 
 ## URL Fragment Authentication

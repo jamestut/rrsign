@@ -128,6 +128,7 @@ body{
 .completion-banner{padding:14px 16px;border-radius:8px;margin:16px 0;font-weight:600;font-size:15px;text-align:center}
 .completion-banner.agreed{background:var(--success);color:#fff}
 .completion-banner.rejected{background:var(--danger);color:#fff}
+.final-page-info-line{font-size:13px;color:var(--text2)}
 /* ── Modal ── */
 #modal-overlay{
   position:fixed;inset:0;z-index:200;
@@ -337,6 +338,21 @@ async function refreshStatus() {
   } catch(e) { state.status = null; }
 }
 
+async function fetchMyIp() {
+  try {
+    var r = await fetch('/api/me/ip', {
+      headers: {'Authorization':'Bearer '+state.token}
+    });
+    var d = await r.json();
+    if (d.ip) {
+      var el = document.getElementById('ip-display');
+      if (el) {
+        el.innerHTML = '<p class="final-page-info-line">Your IP address: ' + escHtml(d.ip) + '</p>';
+      }
+    }
+  } catch(e) {}
+}
+
 // ── Render ──────────────────────────────────────────────────────────
 function renderPage() {
   var total = state.pages.length;
@@ -361,6 +377,9 @@ function renderPage() {
     renderOverview(content);
   } else if (isFinalSigning) {
     renderFinalSigning(content);
+    if (state.isSigner && !state.completed) {
+      fetchMyIp();
+    }
   } else {
     content.innerHTML = marked.parse(state.pages[state.page - 1] || '*Page content missing*');
   }
@@ -422,7 +441,7 @@ function renderFinalSigning(container) {
       html += '<p style="margin-top:24px;font-size:16px;font-weight:600;color:var(--success)">✓ You have agreed to this agreement</p>';
       if (state.myState.geolocation) {
         var gl = state.myState.geolocation;
-        html += '<p style="margin-top:8px;font-size:13px;color:var(--text2)">Location recorded: <a href="https://www.google.com/maps?q='+gl.lat+','+gl.lng+'" target="_blank" rel="noopener">'+gl.lat.toFixed(3)+', '+gl.lng.toFixed(3)+'</a></p>';
+        html += '<p class="final-page-info-line">Location recorded: <a href="https://www.google.com/maps?q='+gl.lat+','+gl.lng+'" target="_blank" rel="noopener">'+gl.lat.toFixed(3)+', '+gl.lng.toFixed(3)+'</a></p>';
       }
     } else if (state.myState.rejected)
       html += '<p style="margin-top:24px;font-size:16px;font-weight:600;color:var(--danger)">✗ You have rejected this agreement</p>';
@@ -438,9 +457,10 @@ function renderFinalSigning(container) {
   var allAgreed = agreedCount === total && total > 0;
 
   html += '<p>Pages agreed: ' + agreedCount + '/' + total + '</p>';
+  html += '<div id="ip-display"></div>';
   if (state.geolocation) {
     var gl = state.geolocation;
-    html += '<p style="margin-top:8px;font-size:13px;color:var(--text2)">Your location: <a href="https://www.google.com/maps?q='+gl.latitude+','+gl.longitude+'" target="_blank" rel="noopener">'+gl.latitude.toFixed(3)+', '+gl.longitude.toFixed(3)+'</a></p>';
+    html += '<p class="final-page-info-line">Your location: <a href="https://www.google.com/maps?q='+gl.latitude+','+gl.longitude+'" target="_blank" rel="noopener">'+gl.latitude.toFixed(3)+', '+gl.longitude.toFixed(3)+'</a></p>';
   }
   html += '<p>Review and make your final decision:</p>';
   html += '<div style="text-align:center;margin-top:24px">';

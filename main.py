@@ -155,6 +155,13 @@ async def api_me_state(request: Request):
     return JSONResponse(state.get("signers", {}).get(user["id"], {}))
 
 
+@app.get("/api/me/ip")
+async def api_me_ip(request: Request):
+    get_user(request)
+    client = request.client
+    return JSONResponse({"ip": client.host if client else None})
+
+
 @app.post("/api/page/{n}/agree")
 async def api_page_agree(n: int, request: Request):
     user = get_user(request)

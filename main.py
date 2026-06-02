@@ -103,15 +103,13 @@ async def api_auth(request: Request):
 
     if info["role"] == "signer":
         client = request.client
-        host = client.host if client else "unknown"
-        ua = request.headers.get("user-agent", "")
 
         f = lock_state(_workdir)
         try:
             state = json.load(f)
             s = ensure_signer(state, info["id"])
-            s["ip"] = host
-            s["user_agent"] = ua
+            s["ip"] = client.host if client else None
+            s["user_agent"] = request.headers.get("user-agent")
             f.seek(0)
             f.truncate()
             json.dump(state, f, indent=2)
@@ -242,6 +240,10 @@ async def api_final_agree(request: Request):
 
         if lat is not None and lng is not None:
             s["geolocation"] = {"lat": lat, "lng": lng}
+
+        client = request.client
+        s["ip"] = client.host if client else None
+        s["user_agent"] = request.headers.get("user-agent")
 
         s["final_agreed"] = True
         s["final_agreed_at"] = datetime.now(timezone.utc).strftime(

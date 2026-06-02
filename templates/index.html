@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <title>Digital Agreement Signer</title>
 <style>
 :root {
@@ -19,7 +19,7 @@
     --bar-bg:#1a1a2e; --top-bg:#0f0f1a; --overlay:rgba(0,0,0,0.7);
   }
 }
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;touch-action:manipulation}
 html,body{height:100%;overflow:hidden}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;
@@ -39,7 +39,7 @@ body{
   flex-shrink:0;z-index:100;
   background:var(--top-bg);border-bottom:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;
-  padding:10px 16px;gap:12px;min-height:48px
+  padding:10px 16px;gap:12px;min-height:48px;touch-action:manipulation
 }
 #user-name{
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
@@ -50,7 +50,7 @@ body{
 #page-counter{font-size:13px;color:var(--text2);white-space:nowrap;flex-shrink:0}
 /* ── Page Content ── */
 #page-content{
-  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:manipulation;
   padding:20px 16px;max-width:800px;margin:0 auto;width:100%
 }
 #page-content h1,#page-content h2,#page-content h3{margin:1.5em 0 .5em;line-height:1.3}
@@ -70,7 +70,8 @@ body{
   flex-shrink:0;z-index:100;
   background:var(--bar-bg);border-top:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;
-  padding:8px 16px;min-height:56px;gap:8px
+  padding:8px 16px calc(8px + env(safe-area-inset-bottom,0px)) 16px;
+  min-height:56px;gap:8px;touch-action:manipulation
 }
 .toolbar-left,.toolbar-right{display:flex;align-items:center;gap:6px}
 .toolbar-btn{
@@ -224,6 +225,8 @@ const state = {
 
 // ── Init ────────────────────────────────────────────────────────────
 window.addEventListener('load', handleHash);
+document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
+window.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
 document.getElementById('btn-back').addEventListener('click', goBack);
 document.getElementById('btn-next').addEventListener('click', goNext);
 document.getElementById('btn-agree').addEventListener('click', openAgree);
